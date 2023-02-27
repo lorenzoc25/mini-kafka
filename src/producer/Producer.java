@@ -12,6 +12,12 @@ public class Producer {
     public Producer(String topic) {
         this.topic = topic;
     }
+
+    // in the future, we need to provide the address of the actual server like zookeeper
+    // or KRaft controller for distributed storage and retention
+    public void conncetToBroker(Broker broker) {
+        this.broker = broker;
+    }
     
     Boolean send(ProducerRecord record) {
         Message message = record.toMessage();
