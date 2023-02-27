@@ -1,9 +1,9 @@
-package producer;
+package main.producer;
 
-import data.Message;
+import main.data.Message;
 
 public class ProducerRecord {
-    private data.Message message;
+    private main.data.Message message;
     public ProducerRecord(String topic, String key, String value) {
         this.message = new Message(topic, key, value);
     }

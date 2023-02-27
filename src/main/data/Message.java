@@ -1,4 +1,4 @@
-package data;
+package main.data;
 
 public class Message {
     private String topic;
@@ -24,6 +24,6 @@ public class Message {
     }
 
     public String toString() {
-        return "Topic: " + this.topic + " Key: " + this.key + " Value: " + this.value;
+        return "Topic: " + this.topic + ", Key: " + this.key + ", Value: " + this.value;
     }
 }

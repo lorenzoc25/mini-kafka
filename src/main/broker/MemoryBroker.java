@@ -1,6 +1,6 @@
-package broker;
+package main.broker;
 
-import data.Message;
+import main.data.Message;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -17,7 +17,7 @@ public class MemoryBroker implements Broker {
         this.subscriptions = new HashMap<>();
     }
 
-    public void store(Message message) {
+    public synchronized void store(Message message) {
         String topic = message.getTopic();
         if (this.records.containsKey(topic)) {
             this.records.get(topic).add(message);
@@ -27,7 +27,7 @@ public class MemoryBroker implements Broker {
         }
     }
 
-    public Message get(String topic, String key) {
+    public synchronized Message get(String topic, String key) {
         if (this.records.containsKey(topic)) {
             for (Message message : this.records.get(topic)) {
                 if (message.getKey().equals(key)) {
@@ -44,19 +44,27 @@ public class MemoryBroker implements Broker {
     }
 
     @Override
-    public void addSubscription(String topic, Integer consumerId) {
+    public List<Message> getTopic(String topic) {
+        if (this.records.containsKey(topic)) {
+            return this.records.get(topic);
+        }
+        return null;
+    }
+
+    @Override
+    public void addSubscription(String topic, String consumerId) {
         if (this.subscriptions.containsKey(topic)) {
-            this.subscriptions.get(topic).add(consumerId.toString());
+            this.subscriptions.get(topic).add(consumerId);
         } else {
             this.subscriptions.put(topic, new ArrayList<String>());
-            this.subscriptions.get(topic).add(consumerId.toString());
+            this.subscriptions.get(topic).add(consumerId);
         }
     }
 
     @Override
-    public void removeSubscription(String topic, Integer consumerId) {
+    public void removeSubscription(String topic, String consumerId) {
         if (this.subscriptions.containsKey(topic)) {
-            this.subscriptions.get(topic).remove(consumerId.toString());
+            this.subscriptions.get(topic).remove(consumerId);
         }
     }
 }
