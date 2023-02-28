@@ -4,18 +4,20 @@ import main.broker.Broker;
 import main.data.Message;
 
 public class Producer {
-    private String topic;
     private Broker broker;
 
-    // as for now, we assume that the main.producer will only produce to one topic
-    // and that we do not need to specify properties for the main.producer
-    public Producer(String topic) {
-        this.topic = topic;
+    /**
+     * For now, producer are initialized by calling the `connect` method
+     * no other functionality is provided, so no other parameters are needed
+     * @param None
+     */
+    public Producer() {
     }
 
     // in the future, we need to provide the address of the actual server like zookeeper
     // or KRaft controller for distributed storage and retention
-    public void connectToBroker(Broker broker) {
+
+    public void connect(Broker broker) {
         this.broker = broker;
     }
     

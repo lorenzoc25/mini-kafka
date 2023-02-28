@@ -14,13 +14,15 @@ public class ConsumerImpl implements Consumer {
     private final String consumerId;
     private Broker broker;
 
+    private Integer offset;
+
     public ConsumerImpl() {
         this.topics = new HashSet<>();
         this.consumerId = UUID.randomUUID().toString();
     }
 
     // like the main.producer, this is only a primitive implementation
-    public void connectToBroker(Broker broker) {
+    public void connect(Broker broker) {
         this.broker = broker;
     }
     @Override
@@ -34,16 +36,29 @@ public class ConsumerImpl implements Consumer {
             this.subscribe(topic);
         }
     }
+    @Override
     public void unsubscribe(String topic) {
         this.topics.remove(topic);
         this.broker.removeSubscription(topic, this.consumerId);
+
     }
 
-    public List<Message> poll() {
-        List<Message> messages = new ArrayList<>();
+    @Override
+    public List<ConsumerRecord> poll() {
+        List<ConsumerRecord> records = new ArrayList<>();
         for (String topic : this.topics) {
-            messages.addAll(this.broker.getTopic(topic));
+            records.addAll(this.broker.getTopic(topic, this.consumerId));
         }
-        return messages;
+        return records;
+    }
+
+    @Override
+    public List<String> getTopics() {
+        return new ArrayList<>(this.topics);
+    }
+
+    @Override
+    public Integer getOffset(String topic) {
+        return this.offset;
     }
 }
