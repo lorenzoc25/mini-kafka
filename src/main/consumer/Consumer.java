@@ -15,13 +15,7 @@ public interface Consumer {
     public void unsubscribe(String topic);
     public List<ConsumerRecord> poll();
     public List<String> getTopics();
-    public Integer getOffset(String topic);
-    /**
-     * TODO: handle commit offset on the consumer end. Currently have broker method
-     *       for commit offset but each consumer needs to keep track of its own offset
-     *       as well. If those two offsets are not the same, the min value between
-     *       those two offsets will be used as the offset to commit to the broker.
-     *       And the broker would clean up all the messages before that offset.
-     */
+    public Integer getOffsetForTopic(String topic);
+    public Boolean commitOffsetForTopic(String topic, Integer offset);
 }
 

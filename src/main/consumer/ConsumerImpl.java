@@ -1,30 +1,30 @@
 package main.consumer;
 
 import main.broker.Broker;
-import main.data.Message;
 
-import java.util.List;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
-import java.util.ArrayList;
+import java.util.*;
+
+// poll -> consume -> pull (send offset)
+//                     +-> broker receive offset -> broker commit offset
 
 public class ConsumerImpl implements Consumer {
     private Set<String> topics;
     private final String consumerId;
     private Broker broker;
 
-    private Integer offset;
+    private Map<String, Integer> offset;
 
     public ConsumerImpl() {
         this.topics = new HashSet<>();
         this.consumerId = UUID.randomUUID().toString();
+        this.offset = new HashMap<>();
     }
 
     // like the main.producer, this is only a primitive implementation
     public void connect(Broker broker) {
         this.broker = broker;
     }
+
     @Override
     public void subscribe(String topic) {
         this.topics.add(topic);
@@ -36,6 +36,7 @@ public class ConsumerImpl implements Consumer {
             this.subscribe(topic);
         }
     }
+
     @Override
     public void unsubscribe(String topic) {
         this.topics.remove(topic);
@@ -45,11 +46,27 @@ public class ConsumerImpl implements Consumer {
 
     @Override
     public List<ConsumerRecord> poll() {
+        List<List<ConsumerRecord>> recordsByTopic = new ArrayList<>();
         List<ConsumerRecord> records = new ArrayList<>();
+
         for (String topic : this.topics) {
-            records.addAll(this.broker.getTopic(topic, this.consumerId));
+            recordsByTopic.add(this.broker.getTopic(topic, this.consumerId));
         }
+
+        updateOffsetFromMessages(recordsByTopic);
+
+        for (List<ConsumerRecord> currTopicRecords : recordsByTopic) {
+            records.addAll(currTopicRecords);
+        }
+
         return records;
+    }
+
+    private void updateOffsetFromMessages(List<List<ConsumerRecord>> recordsByTopic) {
+        for (List<ConsumerRecord> currTopicRecords : recordsByTopic) {
+            String currTopic = currTopicRecords.get(0).getMessage().getTopic();
+            this.offset.put(currTopic, currTopicRecords.get(currTopicRecords.size() - 1).getOffset());
+        }
     }
 
     @Override
@@ -58,7 +75,22 @@ public class ConsumerImpl implements Consumer {
     }
 
     @Override
-    public Integer getOffset(String topic) {
-        return this.offset;
+    public Integer getOffsetForTopic(String topic) {
+        return this.offset.get(topic);
+    }
+
+    public Boolean commitOffsetForTopic(String topic, Integer offset) {
+        if (offset < this.offset.get(topic)) {
+            return false;
+        } else if (!this.offset.containsKey(topic)
+                || !this.topics.contains(topic)) {
+            return false;
+        }
+
+        Boolean success = this.broker.commitOffset(topic, this.consumerId, offset);
+        if (success) {
+            this.offset.put(topic, 0);
+        }
+        return success;
     }
 }

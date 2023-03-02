@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 public class MemoryBroker implements Broker {
     private final Map<String, List<Message>> records;
@@ -14,7 +15,6 @@ public class MemoryBroker implements Broker {
     private final Map<String, Map<String, Integer>> offsets;
 
     public MemoryBroker() {
-
         this.records = new HashMap<>();
         this.subscriptions = new HashMap<>();
         this.offsets = new HashMap<>();
@@ -48,11 +48,12 @@ public class MemoryBroker implements Broker {
             return null;
         }
         List<ConsumerRecord> consumerRecords = new ArrayList<>();
-        for (Message message : this.records.get(topic)) {
+        List<Message> messageInTopic = this.records.get(topic);
+        for (int i = getTopicOffset(topic, consumerId); i < messageInTopic.size(); i++) {
             consumerRecords.add(
                     new ConsumerRecord(
-                            message,
-                            getTopicOffset(topic, consumerId)
+                            messageInTopic.get(i),
+                            i
                     ));
         }
         return consumerRecords;
@@ -99,7 +100,7 @@ public class MemoryBroker implements Broker {
     }
 
     @Override
-    public synchronized boolean commitOffset(
+    public synchronized Boolean commitOffset(
             String topic,
             String consumerId,
             int offset) {
@@ -113,11 +114,14 @@ public class MemoryBroker implements Broker {
                 .mapToInt(Integer::intValue)
                 .min()
                 .orElse(Integer.MAX_VALUE);
-        if (minOffset == Integer.MAX_VALUE || minOffset == 0) {
+        if (minOffset == Integer.MAX_VALUE) {
             return false;
         }
         // clean out all the offset that is less than minOffset of consumers
-        List<Message> newRecords = this.records.get(topic).subList(0, minOffset);
+        List<Message> newRecords = this.records.get(topic).subList(
+                minOffset+1,
+                this.records.get(topic).size()
+            );
         this.records.put(topic, newRecords);
         // reset the offset to 0 for all consumer in this topic
         setTopicOffset(topic, 0);
@@ -128,6 +132,10 @@ public class MemoryBroker implements Broker {
         for (String consumerId : this.subscriptions.get(topic)) {
             updateOffsetForConsumer(topic, consumerId, offset);
         }
+    }
+
+    public List<Message> getAllMessagesInTopic(String topic){
+        return this.records.get(topic);
     }
 
 }

@@ -53,5 +53,12 @@ public interface Broker {
      * @param offset - the offset that the consumer wants to commit
      * @return boolean - true if the offset is committed, false otherwise
      */
-    public boolean commitOffset(String topic, String consumerId, int offset);
+    public Boolean commitOffset(String topic, String consumerId, int offset);
+
+    /**
+     * Get all the messages in a topic without caring about offset
+     * @param topic - the desired topic
+     * @return List<Message> - the list of message records
+     */
+    public List<Message> getAllMessagesInTopic(String topic);
 }
