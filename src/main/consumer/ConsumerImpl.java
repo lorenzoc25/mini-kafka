@@ -4,14 +4,10 @@ import main.broker.Broker;
 
 import java.util.*;
 
-// poll -> consume -> pull (send offset)
-//                     +-> broker receive offset -> broker commit offset
-
 public class ConsumerImpl implements Consumer {
     private Set<String> topics;
     private final String consumerId;
     private Broker broker;
-
     private Map<String, Integer> offset;
 
     public ConsumerImpl() {

@@ -7,9 +7,7 @@ import main.consumer.ConsumerRecord;
 
 public interface Consumer {
     // can be either single main.consumer or a main.consumer group
-
     public void connect(Broker broker);
-
     public void subscribe(String topic);
     public void subscribe(List<String> topics);
     public void unsubscribe(String topic);
