@@ -22,8 +22,7 @@ public class Producer {
     }
     
     public Boolean send(ProducerRecord record) {
-        Message message = record.toMessage();
-        this.broker.store(message);
+        this.broker.store(record);
         return true;
     }
 

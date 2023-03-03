@@ -46,7 +46,7 @@ public class ConsumerImpl implements Consumer {
         List<ConsumerRecord> records = new ArrayList<>();
 
         for (String topic : this.topics) {
-            recordsByTopic.add(this.broker.getTopic(topic, this.consumerId));
+            recordsByTopic.add(this.broker.fetchTopicFor(topic, this.consumerId));
         }
 
         updateOffsetFromMessages(recordsByTopic);

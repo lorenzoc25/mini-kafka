@@ -4,6 +4,7 @@ public class Message {
     private String topic;
     private String key;
     private String value;
+    private Integer partitionId;
 
     public Message(String topic, String key, String value) {
         this.topic = topic;
@@ -25,5 +26,13 @@ public class Message {
 
     public String toString() {
         return "Topic: " + this.topic + ", Key: " + this.key + ", Value: " + this.value;
+    }
+
+    public Integer getPartitionId() {
+        return this.partitionId;
+    }
+
+    public void setPartitionId(Integer partitionId) {
+        this.partitionId = partitionId;
     }
 }

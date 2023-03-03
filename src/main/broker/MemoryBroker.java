@@ -2,6 +2,8 @@ package main.broker;
 
 import main.consumer.ConsumerRecord;
 import main.data.Message;
+import main.data.Partition;
+import main.producer.ProducerRecord;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,10 +11,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
 
+
 public class MemoryBroker implements Broker {
-    private final Map<String, List<Message>> records;
+    /**
+     * Map topic -> List of partitions
+     * <p>
+     * Used to store all the messages. Each partition contains a list of
+     * messages
+     */
+    private final Map<String, List<Partition>> records;
+    /**
+     * Map topic -> List of consumerIds
+     * <p>
+     * Used to keep track of the consumers that are subscribed to a topic
+     */
     private final Map<String, List<String>> subscriptions;
-    private final Map<String, Map<String, Integer>> offsets;
+    /**
+     * Map topic -> PartitionId -> ConsumerId -> Offset
+     * <p>
+     * Used to keep track of the offset for each consumer
+     */
+    private final Map<String, Map<Integer, Map<String, Integer>>> offsets;
 
     public MemoryBroker() {
         this.records = new HashMap<>();
@@ -21,21 +40,75 @@ public class MemoryBroker implements Broker {
     }
 
 
-    public synchronized void store(Message message) {
-        String topic = message.getTopic();
-        if (this.records.containsKey(topic)) {
-            this.records.get(topic).add(message);
-        } else {
+    @Override
+    public synchronized void store(ProducerRecord producerRecord) {
+        String topic = producerRecord.getTopic();
+        Integer partitionId = producerRecord.getPartitionId();
+        if (this.records.get(topic) == null) {
             this.records.put(topic, new ArrayList<>());
-            this.records.get(topic).add(message);
+            createPartition(topic);
+        }
+        addMessageToPartition(topic, partitionId, producerRecord.toMessage());
+    }
+
+    private Integer getPartitionsSize(String topic) {
+        if (this.records.containsKey(topic)) {
+            return this.records.get(topic).size();
+        }
+        return 0;
+    }
+
+    /**
+     * Create a new partition for the given topic, returns the index
+     * of the new partition(partitionID)
+     *
+     * @param topic - the topic to create a new partition for
+     * @return partitionId
+     */
+    private Integer createPartition(String topic) {
+        Integer numPartition = getPartitionsSize(topic);
+        this.records.get(topic).add(new Partition(numPartition));
+        return numPartition;
+    }
+
+    private void addMessageToPartition(String topic, Integer partitionId, Message message) {
+        if (partitionId != null) {
+            if (partitionId >= getPartitionsSize(topic)) {
+                throw new RuntimeException("Partition does not exist");
+            }
+            this.records.get(topic).get(partitionId).addMessage(message);
+        } else {
+            Integer generatedPartitionId = generatePartitionIdFor(topic, message.getKey());
+            this.records.get(topic).get(generatedPartitionId).addMessage(message);
         }
     }
 
+    private Integer generatePartitionIdFor(String topic, String key) {
+        // TODO: this should be in run in a background thread
+        Integer numPartition = getPartitionsSize(topic);
+        if (numPartition == 0) {
+            return createPartition(topic);
+        }
+        Integer partitionId = hashKey(key, numPartition);
+        return partitionId;
+    }
+
+    private Integer hashKey(String key, Integer range) {
+        int hash = 7;
+        for (char c : key.toCharArray()) {
+            hash += hash * 31 + c;
+        }
+        return hash % range;
+    }
+
+    @Override
     public synchronized Message get(String topic, String key) {
         if (this.records.containsKey(topic)) {
-            for (Message message : this.records.get(topic)) {
-                if (message.getKey().equals(key)) {
-                    return message;
+            for (Partition partition : this.records.get(topic)) {
+                for (Message message : partition.getMessages()) {
+                    if (message.getKey().equals(key)) {
+                        return message;
+                    }
                 }
             }
         }
@@ -43,25 +116,40 @@ public class MemoryBroker implements Broker {
     }
 
     @Override
-    public List<ConsumerRecord> getTopic(String topic, String consumerId) {
+    public List<ConsumerRecord> fetchTopicFor(String topic, String consumerId) {
         if (!this.records.containsKey(topic)) {
             return null;
         }
         List<ConsumerRecord> consumerRecords = new ArrayList<>();
-        List<Message> messageInTopic = this.records.get(topic);
-        for (int i = getTopicOffset(topic, consumerId); i < messageInTopic.size(); i++) {
-            consumerRecords.add(
-                    new ConsumerRecord(
-                            messageInTopic.get(i),
-                            i
-                    ));
+        List<Partition> partitionsInTopic = this.records.get(topic);
+        for (int partitionId = 0; partitionId < partitionsInTopic.size(); partitionId++) {
+            Partition partition = partitionsInTopic.get(partitionId);
+            List<Message> messagesInPartition = partition.getMessages();
+            for (
+                    int i = getOffsetFor(topic, consumerId, partitionId);
+                    i < messagesInPartition.size();
+                    i++
+            ) {
+                consumerRecords.add(
+                        new ConsumerRecord(
+                                messagesInPartition.get(i),
+                                i
+                        ));
+            }
         }
         return consumerRecords;
     }
 
-    private Integer getTopicOffset(String topic, String consumerId) {
+    private Integer getOffsetFor(
+            String topic,
+            String consumerId,
+            Integer partitionId
+    ) {
         if (this.offsets.containsKey(topic)) {
-            return this.offsets.get(topic).getOrDefault(consumerId, 0);
+            return this.offsets
+                    .get(topic)
+                    .get(partitionId)
+                    .getOrDefault(consumerId, 0);
         }
         return 0;
     }
@@ -69,7 +157,13 @@ public class MemoryBroker implements Broker {
     @Override
     public void addSubscription(String topic, String consumerId) {
         addConsumerToTopic(topic, consumerId);
-        updateOffsetForConsumer(topic, consumerId, 0);
+        updateOffsetForConsumer(topic, consumerId, 0, getAssignedPartition(topic));
+    }
+
+    @Override
+    public void addSubscription(String topic, String consumerId, Integer partitionId) {
+        addConsumerToTopic(topic, consumerId);
+        updateOffsetForConsumer(topic, consumerId, 0, partitionId);
     }
 
     private void addConsumerToTopic(String topic, String consumerId) {
@@ -81,33 +175,62 @@ public class MemoryBroker implements Broker {
         }
     }
 
+    /**
+     * Assign a partition to a consumer. For now, it will choose the last
+     * partition in the available partitions
+     *
+     * @param topic - the topic to assign a partition to
+     * @return partitionId
+     */
+    private Integer getAssignedPartition(String topic) {
+        if (this.records.containsKey(topic)) {
+            return this.records.get(topic).size() - 1;
+        }
+        return 0;
+    }
+
     private void updateOffsetForConsumer(
             String topic,
             String consumerId,
-            int offset) {
-        if (!this.offsets.containsKey(topic)) {
-            this.offsets.put(topic, new HashMap<>());
+            int offset,
+            Integer partitionId
+    ) {
+        if (
+                !this.offsets.containsKey(topic)
+                        || !this.offsets.get(topic).containsKey(partitionId)
+        ) {
+            throw new RuntimeException("Partition does not exist");
         }
-        this.offsets.get(topic).put(consumerId, offset);
+        this.offsets
+                .get(topic)
+                .get(partitionId)
+                .put(consumerId, offset);
     }
 
     @Override
     public void removeSubscription(String topic, String consumerId) {
         if (this.subscriptions.containsKey(topic)) {
             this.subscriptions.get(topic).remove(consumerId);
-            this.offsets.get(topic).remove(consumerId);
+            for (Partition partition : this.records.get(topic)) {
+                this.offsets
+                        .get(topic)
+                        .get(partition.getPartitionId())
+                        .remove(consumerId);
+            }
         }
     }
 
+    // TODO: fix the following function, not working right now
     @Override
     public synchronized Boolean commitOffset(
             String topic,
             String consumerId,
             int offset) {
         updateOffsetForConsumer(topic, consumerId, offset);
-        return cleanOutdatedRecords(topic);
+        return cleanOutdatedRecords(topic, partitionId);
     }
-    private boolean cleanOutdatedRecords(String topic) {
+
+    private boolean cleanOutdatedRecords(String topic, Integer partitionId) {
         int minOffset = this.offsets.get(topic)
                 .values()
                 .stream()
@@ -119,9 +242,9 @@ public class MemoryBroker implements Broker {
         }
         // clean out all the offset that is less than minOffset of consumers
         List<Message> newRecords = this.records.get(topic).subList(
-                minOffset+1,
+                minOffset + 1,
                 this.records.get(topic).size()
-            );
+        );
         this.records.put(topic, newRecords);
         // reset the offset to 0 for all consumer in this topic
         setTopicOffset(topic, 0);
@@ -134,7 +257,7 @@ public class MemoryBroker implements Broker {
         }
     }
 
-    public List<Message> getAllMessagesInTopic(String topic){
+    public List<Message> getAllMessagesInTopic(String topic) {
         return this.records.get(topic);
     }
 

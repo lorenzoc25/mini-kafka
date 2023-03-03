@@ -2,16 +2,17 @@ package main.broker;
 
 import main.consumer.ConsumerRecord;
 import main.data.Message;
+import main.producer.ProducerRecord;
 
 import java.util.List;
 
 
 public interface Broker {
     /**
-     * Store a message record in the broker
+     * Store a producer record in the broker
      * @param message - the message record to be stored
      */
-    public void store(Message message);
+    public void store(ProducerRecord producerRecord);
 
     /**
      * Get a specific message record from a topic in the broker
@@ -22,12 +23,15 @@ public interface Broker {
     public Message get(String topic, String key);
 
     /**
-     * Allow a consumer to subscribe to a topic from the broker
+     * Allow a consumer to subscribe to a topic from the broker. If partition
+     * id is not specified, the broker will assign a partition to the consumer
      * @param topic - the topic that the consumer wants to subscribe to
      * @param consumerId - the id of the consumer performing the subscription
      *
      */
     public void addSubscription(String topic, String consumerId);
+
+    public void addSubscription(String topic, String consumerId, Integer partitionId);
     /**
      * Allow a consumer to unsubscribe to a topic from the broker
      * @param topic - the topic that the consumer wants to opt out of
@@ -43,7 +47,7 @@ public interface Broker {
      * @param consumerId - the id of the consumer performing the fetch
      * @return List<ConsumerRecord> - the list of message records for the consumer
      */
-    public List<ConsumerRecord> getTopic(String topic, String consumerId);
+    public List<ConsumerRecord> fetchTopicFor(String topic, String consumerId);
 
     /**
      * Used for consumer to commit an offset, returns true if the offset is committed
