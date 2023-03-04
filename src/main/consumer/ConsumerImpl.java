@@ -119,7 +119,7 @@ public class ConsumerImpl implements Consumer {
     }
 
     @Override
-    public Integer getOffsetFor(String topic, Integer partitionId) {
+    public int getOffsetFor(String topic, Integer partitionId) {
         return this.offset.get(topic).get(partitionId);
     }
 

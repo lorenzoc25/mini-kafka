@@ -282,4 +282,29 @@ public class MemoryBroker implements Broker {
         return messages;
     }
 
+    @Override
+    public Integer addPartition(String topic) {
+        return createPartition(topic);
+    }
+
+    @Override
+    public List<Message> removePartition(String topic, Integer partitionId) {
+        if (this.records.containsKey(topic)) {
+            List<Message> messages = this.records
+                    .get(topic)
+                    .get(partitionId)
+                    .getMessages();
+            this.records.get(topic).remove(partitionId);
+            return messages;
+        }
+        return null;
+    }
+
+    @Override
+    public int getNumPartitions(String topic) {
+        if (this.records.containsKey(topic)) {
+            return this.records.get(topic).size();
+        }
+        return 0;
+    }
 }

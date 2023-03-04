@@ -18,7 +18,7 @@ public interface Consumer {
 
     List<String> getTopics();
 
-    Integer getOffsetFor(String topic, Integer partitionId);
+    int getOffsetFor(String topic, Integer partitionId);
 
     Boolean commitOffsetFor(String topic, Integer partitionId, Integer offset);
 }

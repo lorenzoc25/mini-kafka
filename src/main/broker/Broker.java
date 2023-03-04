@@ -79,4 +79,31 @@ public interface Broker {
      * @return
      */
     List<List<Message>> getAllMessageWithPartition(String topic);
+
+    /**
+     * Add a partition to a topic, and return the partition id of that
+     * partition
+     *
+     * @param topic - the topic that the partition is added to
+     * @return Integer - the partition id of the new partition
+     */
+    Integer addPartition(String topic);
+
+    /**
+     * Remove a partition from a topic, and return all the messages in the
+     * removed partition
+     *
+     * @param topic       - the topic that the partition is removed from
+     * @param partitionId - the partition id of the partition to be removed
+     * @return List<Message> - the list of messages in the removed partition
+     */
+    List<Message> removePartition(String topic, Integer partitionId);
+
+    /**
+     * Get the number of partitions in a topic
+     *
+     * @param topic - the topic that the partition is removed from
+     * @return Integer - the number of partitions in the topic
+     */
+    int getNumPartitions(String topic);
 }
