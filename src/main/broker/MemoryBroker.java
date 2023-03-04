@@ -9,8 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.IntStream;
-
+// TODO: INITIALIZE OFFSETS
 
 public class MemoryBroker implements Broker {
     /**
@@ -67,7 +66,13 @@ public class MemoryBroker implements Broker {
      */
     private Integer createPartition(String topic) {
         Integer numPartition = getPartitionsSize(topic);
+        if (numPartition == 0) {
+            this.records.put(topic, new ArrayList<>());
+            this.offsets.put(topic, new HashMap<>());
+        }
         this.records.get(topic).add(new Partition(numPartition));
+        this.offsets.computeIfAbsent(topic, k -> new HashMap<>());
+        this.offsets.get(topic).put(numPartition, new HashMap<>());
         return numPartition;
     }
 
@@ -133,7 +138,8 @@ public class MemoryBroker implements Broker {
                 consumerRecords.add(
                         new ConsumerRecord(
                                 messagesInPartition.get(i),
-                                i
+                                i,
+                                partitionId
                         ));
             }
         }
@@ -157,12 +163,18 @@ public class MemoryBroker implements Broker {
     @Override
     public void addSubscription(String topic, String consumerId) {
         addConsumerToTopic(topic, consumerId);
+        if (this.offsets.get(topic) == null) {
+            createPartition(topic);
+        }
         updateOffsetForConsumer(topic, consumerId, 0, getAssignedPartition(topic));
     }
 
     @Override
     public void addSubscription(String topic, String consumerId, Integer partitionId) {
         addConsumerToTopic(topic, consumerId);
+        if (this.offsets.get(topic) == null) {
+            createPartition(topic);
+        }
         updateOffsetForConsumer(topic, consumerId, 0, partitionId);
     }
 
@@ -196,8 +208,8 @@ public class MemoryBroker implements Broker {
             Integer partitionId
     ) {
         if (
-                !this.offsets.containsKey(topic)
-                        || !this.offsets.get(topic).containsKey(partitionId)
+                !this.offsets.containsKey(topic) ||
+                !this.offsets.get(topic).containsKey(partitionId)
         ) {
             throw new RuntimeException("Partition does not exist");
         }
@@ -220,45 +232,54 @@ public class MemoryBroker implements Broker {
         }
     }
 
-    // TODO: fix the following function, not working right now
     @Override
     public synchronized Boolean commitOffset(
             String topic,
             String consumerId,
-            int offset) {
-        updateOffsetForConsumer(topic, consumerId, offset);
+            int offset,
+            Integer partitionId
+    ) {
+        updateOffsetForConsumer(topic, consumerId, offset, partitionId);
         return cleanOutdatedRecords(topic, partitionId);
     }
 
     private boolean cleanOutdatedRecords(String topic, Integer partitionId) {
-        int minOffset = this.offsets.get(topic)
-                .values()
-                .stream()
-                .mapToInt(Integer::intValue)
-                .min()
-                .orElse(Integer.MAX_VALUE);
+        int minOffset = Integer.MAX_VALUE;
+        for (String consumerId : this.subscriptions.get(topic)) {
+            int offset = getOffsetFor(topic, consumerId, partitionId);
+            minOffset = Math.min(minOffset, offset);
+        }
         if (minOffset == Integer.MAX_VALUE) {
             return false;
         }
+
         // clean out all the offset that is less than minOffset of consumers
-        List<Message> newRecords = this.records.get(topic).subList(
-                minOffset + 1,
-                this.records.get(topic).size()
-        );
-        this.records.put(topic, newRecords);
+        this.records.get(topic).get(partitionId).updateMessageForOffset(minOffset + 1);
         // reset the offset to 0 for all consumer in this topic
-        setTopicOffset(topic, 0);
+        setTopicOffset(topic, 0, partitionId);
         return true;
     }
 
-    private void setTopicOffset(String topic, int offset) {
+    private void setTopicOffset(String topic, int offset, Integer partitionId) {
         for (String consumerId : this.subscriptions.get(topic)) {
-            updateOffsetForConsumer(topic, consumerId, offset);
+            updateOffsetForConsumer(topic, consumerId, offset, partitionId);
         }
     }
 
     public List<Message> getAllMessagesInTopic(String topic) {
-        return this.records.get(topic);
+        List<Message> messages = new ArrayList<>();
+        for (Partition partition : this.records.get(topic)) {
+            messages.addAll(partition.getMessages());
+        }
+        return messages;
+    }
+
+    public List<List<Message>> getAllMessageWithPartition(String topic) {
+        List<List<Message>> messages = new ArrayList<>();
+        for (Partition partition : this.records.get(topic)) {
+            messages.add(partition.getMessages());
+        }
+        return messages;
     }
 
 }

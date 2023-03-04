@@ -3,12 +3,14 @@ package main.consumer;
 import main.data.Message;
 
 public class ConsumerRecord {
-    private Integer offset;
     private Message message;
+    private Integer offset;
+    private Integer partitionId;
 
-    public ConsumerRecord(Message message, Integer offset) {
+    public ConsumerRecord(Message message, Integer offset, Integer partitionId) {
         this.offset = offset;
         this.message = message;
+        this.partitionId = partitionId;
     }
 
     public Integer getOffset() {
@@ -17,5 +19,9 @@ public class ConsumerRecord {
 
     public Message getMessage() {
         return this.message;
+    }
+
+    public Integer getPartitionId() {
+        return this.partitionId;
     }
 }

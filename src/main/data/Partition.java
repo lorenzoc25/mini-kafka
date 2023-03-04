@@ -1,6 +1,7 @@
 package main.data;
 
 import java.util.List;
+import java.util.ArrayList;
 
 public class Partition {
     private final Integer partitionId;
@@ -12,6 +13,7 @@ public class Partition {
      */
     public Partition(Integer partitionId) {
         this.partitionId = partitionId;
+        this.messages = new ArrayList<>();
     }
 
     public void addMessage(Message message) {
@@ -20,6 +22,10 @@ public class Partition {
 
     public void addMessage(List<Message> messages) {
         this.messages.addAll(messages);
+    }
+
+    public void updateMessageForOffset(Integer offset) {
+        this.messages = this.messages.subList(offset, this.messages.size());
     }
 
     public Integer getPartitionId() {
