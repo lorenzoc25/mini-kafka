@@ -6,10 +6,11 @@ implementation of the Kafka producer and consumer APIs for sending and receiving
 This is only meant for educational and practice purposes and is not intended to be used in production.
 
 ## Todos
-- [ ] Add support for multiple partitions
-  - Needs to add partition in the consumer record
-  - Test if the original testcase still works
+- [x] WIP: Add support for multiple partitions
   - A consumer can specify which partition to consume from
+  - A producer can specify which partition to send to
+  - Test to see if offsets are correctly managed by broker
+  - Test to see if consumers can consume from multiple partitions
   
 - [ ] Handle multithreaded producer/consumer requests
 - [ ] Able to connect to real Kafka brokers
