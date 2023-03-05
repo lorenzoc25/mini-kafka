@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-// TODO: INITIALIZE OFFSETS
 
 public class MemoryBroker implements Broker {
     /**
@@ -76,10 +75,23 @@ public class MemoryBroker implements Broker {
         return numPartition;
     }
 
+    /**
+     * Add a message to the partition with the given partitionId. If no
+     * partitionId is given, a partition is generated based on the key
+     * of the message
+     *
+     * @param topic       - the topic that the message is stored in
+     * @param partitionId - the partitionId to store the message in
+     * @param message     - the message to store
+     */
     private void addMessageToPartition(String topic, Integer partitionId, Message message) {
         if (partitionId != null) {
-            if (partitionId >= getPartitionsSize(topic)) {
+            if (partitionId > getPartitionsSize(topic)) {
                 throw new RuntimeException("Partition does not exist");
+            } else if (partitionId.equals(getPartitionsSize(topic))) {
+                // the requested partition id is only one more than the current size,
+                // so it's ok to allocate a new partition.
+                createPartition(topic);
             }
             this.records.get(topic).get(partitionId).addMessage(message);
         } else {
@@ -94,8 +106,7 @@ public class MemoryBroker implements Broker {
         if (numPartition == 0) {
             return createPartition(topic);
         }
-        Integer partitionId = hashKey(key, numPartition);
-        return partitionId;
+        return hashKey(key, numPartition);
     }
 
     private Integer hashKey(String key, Integer range) {
@@ -146,7 +157,7 @@ public class MemoryBroker implements Broker {
         return consumerRecords;
     }
 
-    private Integer getOffsetFor(
+    public int getOffsetFor(
             String topic,
             String consumerId,
             Integer partitionId
@@ -209,7 +220,7 @@ public class MemoryBroker implements Broker {
     ) {
         if (
                 !this.offsets.containsKey(topic) ||
-                !this.offsets.get(topic).containsKey(partitionId)
+                        !this.offsets.get(topic).containsKey(partitionId)
         ) {
             throw new RuntimeException("Partition does not exist");
         }

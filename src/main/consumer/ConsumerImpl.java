@@ -1,7 +1,6 @@
 package main.consumer;
 
 import main.broker.Broker;
-import main.data.Message;
 
 import java.util.*;
 
@@ -76,7 +75,7 @@ public class ConsumerImpl implements Consumer {
                         .get(currTopic)
                         .put(
                                 partitionId,
-                                currPartition.get(currPartition.size() - 1).getOffset()
+                                currPartition.get(currPartition.size() - 1).offset()
                         );
             }
         }
@@ -85,6 +84,7 @@ public class ConsumerImpl implements Consumer {
 
     /**
      * This method is used to transform the list of records by topic into a map of topic -> partitionId -> List of messages
+     *
      * @param recordsByTopic List of list<record>, separated by topic
      * @return Map of topic -> partitionId -> List of messages
      */
@@ -94,11 +94,11 @@ public class ConsumerImpl implements Consumer {
         Map<String, Map<Integer, List<ConsumerRecord>>> topicPartitionMap = new HashMap<>();
 
         for (List<ConsumerRecord> currTopicRecords : recordsByTopic) {
-            String currTopic = currTopicRecords.get(0).getMessage().getTopic();
+            String currTopic = currTopicRecords.get(0).message().getTopic();
             topicPartitionMap.put(currTopic, new HashMap<>());
 
             for (ConsumerRecord currRecord : currTopicRecords) {
-                Integer currPartitionId = currRecord.getPartitionId();
+                Integer currPartitionId = currRecord.partition();
 
                 if (!topicPartitionMap.get(currTopic).containsKey(currPartitionId)) {
                     topicPartitionMap.get(currTopic).put(currPartitionId, new ArrayList<>());
@@ -112,7 +112,6 @@ public class ConsumerImpl implements Consumer {
     }
 
 
-
     @Override
     public List<String> getTopics() {
         return new ArrayList<>(this.topics);
@@ -120,14 +119,16 @@ public class ConsumerImpl implements Consumer {
 
     @Override
     public int getOffsetFor(String topic, Integer partitionId) {
-        return this.offset.get(topic).get(partitionId);
+        return this.offset.get(topic)
+                .computeIfAbsent(
+                        partitionId,
+                        k -> this.broker.getOffsetFor(topic, this.consumerId, partitionId)
+                );
     }
 
     @Override
     public Boolean commitOffsetFor(String topic, Integer partitionId, Integer offset) {
-        if (offset < getOffsetFor(topic, partitionId)) {
-            return false;
-        } else if (!this.offset.containsKey(topic)
+        if (!this.offset.containsKey(topic)
                 || !this.topics.contains(topic)) {
             return false;
         }

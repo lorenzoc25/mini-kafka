@@ -13,15 +13,16 @@ public class ConsumerRecord {
         this.partitionId = partitionId;
     }
 
-    public Integer getOffset() {
+    public Integer offset() {
         return this.offset;
     }
 
-    public Message getMessage() {
+    public Message message() {
         return this.message;
     }
 
-    public Integer getPartitionId() {
+
+    public Integer partition() {
         return this.partitionId;
     }
 }

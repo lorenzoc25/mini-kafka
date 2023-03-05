@@ -1,7 +1,8 @@
 package main.producer;
 
 import main.broker.Broker;
-import main.data.Message;
+
+import java.util.List;
 
 public class Producer {
     private Broker broker;
@@ -9,6 +10,7 @@ public class Producer {
     /**
      * For now, producer are initialized by calling the `connect` method
      * no other functionality is provided, so no other parameters are needed
+     *
      * @param None
      */
     public Producer() {
@@ -20,9 +22,16 @@ public class Producer {
     public void connect(Broker broker) {
         this.broker = broker;
     }
-    
+
     public Boolean send(ProducerRecord record) {
         this.broker.store(record);
+        return true;
+    }
+
+    public Boolean send(List<ProducerRecord> records) {
+        for (ProducerRecord record : records) {
+            this.send(record);
+        }
         return true;
     }
 

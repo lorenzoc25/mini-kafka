@@ -9,7 +9,8 @@ import java.util.List;
 
 public interface Broker {
     /**
-     * Store a producer record in the broker
+     * Store a producer record in the broker. If no partition is specified,
+     * the broker will assign a partition to the producer record
      */
     void store(ProducerRecord producerRecord);
 
@@ -106,4 +107,15 @@ public interface Broker {
      * @return Integer - the number of partitions in the topic
      */
     int getNumPartitions(String topic);
+
+    /**
+     * Get the offset for a consumer in a topic. Used to sync up the
+     * consumer's offset with the broker's offset map
+     *
+     * @param topic - the topic that the consumer is subscribed to
+     * @param consumerId - the id of the consumer
+     * @param partitionId - the partition id of the consumer
+     * @return Integer - the offset of the consumer
+     */
+    int getOffsetFor(String topic, String consumerId, Integer partitionId);
 }
