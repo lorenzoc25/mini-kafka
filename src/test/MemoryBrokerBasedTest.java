@@ -62,6 +62,7 @@ public class basicTest {
         List<ConsumerRecord> messages = new ArrayList<>();
         messages.addAll(consumer.poll());
         assertEquals(messages.size(), 1);
+        System.out.println(messages.get(0).getPartitionId());
         Integer currentOffset = consumer.getOffsetFor("test", partitionId);
         assertEquals(currentOffset, Optional.of(0).get());
         producer.send(new ProducerRecord("test", "key2", "value2"));
@@ -107,6 +108,16 @@ public class basicTest {
         assertEquals(messages.size(), 4);
         List<List<Message>> partitions = broker.getAllMessageWithPartition("test");
         assertEquals(partitions.size(), 3);
+        for (int i = 0; i < partitions.size(); i++) {
+            System.out.printf("Partition %d has %d messages%n", i, partitions.get(i).size());
+            for (Message message : partitions.get(i)) {
+                System.out.printf("Message: %s%n", message);
+            }
+        }
+    }
+    @Test
+    public void consumeFromSpecificPartitionTest(){
+        
     }
 }
 
