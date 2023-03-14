@@ -3,24 +3,19 @@ package main.producer;
 import main.data.Message;
 
 public class ProducerRecord {
-    private Message message;
+    private final Message message;
     private Integer partitionId;
 
-    /**
-     * As for now, a producer record is just an encapsulation of a message, no other
-     * information is added
-     *
-     * @param topic
-     * @param key
-     * @param value
-     */
-    public ProducerRecord(String topic, String key, String value) {
-        this.message = new Message(topic, key, value);
+    public ProducerRecord(Message message) {
+        this.message = message;
         this.partitionId = null;
     }
 
-    public ProducerRecord(String topic, String key, String value, Integer partitionId) {
-        this.message = new Message(topic, key, value);
+    public ProducerRecord(
+            Message message,
+            Integer partitionId
+    ) {
+        this.message = message;
         this.partitionId = partitionId;
     }
 
@@ -28,15 +23,15 @@ public class ProducerRecord {
         return this.message;
     }
 
-    public String getTopic() {
+    public String topic() {
         return this.message.getTopic();
     }
 
-    public String getKey() {
+    public String key() {
         return this.message.getKey();
     }
 
-    public String getValue() {
+    public String value() {
         return this.message.getValue();
     }
 
@@ -47,4 +42,5 @@ public class ProducerRecord {
     public void setPartitionId(Integer partitionId) {
         this.partitionId = partitionId;
     }
+
 }

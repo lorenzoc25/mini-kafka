@@ -17,5 +17,7 @@
         <SOURCES />
       </library>
     </orderEntry>
+    <orderEntry type="library" name="io.cloudevents.api" level="project" />
+    <orderEntry type="library" name="io.cloudevents.core" level="project" />
   </component>
 </module>

@@ -40,7 +40,7 @@ public class MemoryBroker implements Broker {
 
     @Override
     public synchronized void store(ProducerRecord producerRecord) {
-        String topic = producerRecord.getTopic();
+        String topic = producerRecord.topic();
         Integer partitionId = producerRecord.getPartitionId();
         if (this.records.get(topic) == null) {
             this.records.put(topic, new ArrayList<>());

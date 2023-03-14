@@ -19,21 +19,25 @@ import static org.junit.Assert.assertEquals;
 public class MemoryBrokerBasedTest {
     @Test
     public void basicRoutineTest() {
+        final String source = "basicRoutineTest";
         Producer producer = new Producer();
         Broker broker = new MemoryBroker();
         producer.connect(broker);
         Consumer consumer = new ConsumerImpl();
         consumer.connect(broker);
         consumer.subscribe("test");
-        producer.send(new ProducerRecord("test", "key", "value"));
+        Message msg1 = new Message(source, "test", "key", "value");
+        producer.send(new ProducerRecord(msg1));
         List<ConsumerRecord> messages = new ArrayList<>();
         messages.addAll(consumer.poll());
         assertEquals(messages.size(), 1);
         assertEquals(messages.get(0).message().getKey(), "key");
         assertEquals(messages.get(0).message().getValue(), "value");
 
-        producer.send(new ProducerRecord("test2", "key", "value"));
-        producer.send(new ProducerRecord("test3", "key", "value"));
+        Message msg2 = new Message(source, "test2", "key", "value");
+        producer.send(new ProducerRecord(msg2));
+        Message msg3 = new Message(source, "test3", "key", "value");
+        producer.send(new ProducerRecord(msg3));
         consumer.subscribe(List.of("test2", "test3"));
         assertEquals(consumer.getTopics().size(), 3);
         List<ConsumerRecord> pollResult = consumer.poll();
@@ -51,17 +55,20 @@ public class MemoryBrokerBasedTest {
         Producer producer = new Producer();
         Broker broker = new MemoryBroker();
         final int partitionId = 0;
+        final String source = "singlePartitionOffsetTest";
         producer.connect(broker);
         Consumer consumer = new ConsumerImpl();
         consumer.connect(broker);
         consumer.subscribe("test");
-        producer.send(new ProducerRecord("test", "key1", "value1"));
+        Message msg1 = new Message(source, "test", "key1", "value1");
+        producer.send(new ProducerRecord(msg1));
         List<ConsumerRecord> messages = new ArrayList<>();
         messages.addAll(consumer.poll());
         assertEquals(messages.size(), 1);
         Integer currentOffset = consumer.getOffsetFor("test", partitionId);
         assertEquals(currentOffset, (Object) 0);
-        producer.send(new ProducerRecord("test", "key2", "value2"));
+        Message msg2 = new Message(source, "test", "key2", "value2");
+        producer.send(new ProducerRecord(msg2));
         assertEquals(broker.getAllMessagesInTopic("test").size(), 2);
         Boolean commitSuccess = consumer.commitOffsetFor("test", 0, 0);
         assertEquals(commitSuccess, true);
@@ -83,6 +90,7 @@ public class MemoryBrokerBasedTest {
         Consumer consumer = new ConsumerImpl();
         consumer.connect(broker);
         consumer.subscribe("test");
+        final String source = "multiplePartitionTest";
         // each topic by default has 1 partition
         assertEquals(broker.getNumPartitions("test"), 1);
         // try to add more partitions
@@ -91,25 +99,24 @@ public class MemoryBrokerBasedTest {
         broker.addPartition("test");
         assertEquals(broker.getNumPartitions("test"), 3);
         // now send messages to the topic
-        producer.send(new ProducerRecord("test", "key1", "value1"));
+        Message msg1 = new Message(source, "test", "key1", "value1");
+        producer.send(new ProducerRecord(msg1));
         List<Message> messages = new ArrayList<>();
         messages.addAll(broker.getAllMessagesInTopic("test"));
         assertEquals(messages.size(), 1);
         assertEquals(messages.get(0).getKey(), "key1");
-        producer.send(new ProducerRecord("test", "key2", "value2"));
-        producer.send(new ProducerRecord("test", "key3", "value2"));
-        producer.send(new ProducerRecord("test", "key4", "value5"));
+        Message msg2 = new Message(source, "test", "key2", "value2");
+        Message msg3 = new Message(source, "test", "key3", "value3");
+        Message msg4 = new Message(source, "test", "key4", "value4");
+        producer.send(new ProducerRecord(msg2));
+        producer.send(new ProducerRecord(msg3));
+        producer.send(new ProducerRecord(msg4));
         messages.clear();
         messages.addAll(broker.getAllMessagesInTopic("test"));
         assertEquals(messages.size(), 4);
         List<List<Message>> partitions = broker.getAllMessageWithPartition("test");
         assertEquals(partitions.size(), 3);
-//        for (int i = 0; i < partitions.size(); i++) {
-//            System.out.printf("Partition %d has %d messages%n", i, partitions.get(i).size());
-//            for (Message message : partitions.get(i)) {
-//                System.out.printf("Message: %s%n", message);
-//            }
-//        }
+
     }
 
     @Test
@@ -120,9 +127,13 @@ public class MemoryBrokerBasedTest {
         Consumer consumer = new ConsumerImpl();
         consumer.connect(broker);
         consumer.subscribe("test");
-        producer.send(new ProducerRecord("test", "key0", "value0", 0));
-        producer.send(new ProducerRecord("test", "key1", "value1", 1));
-        producer.send(new ProducerRecord("test", "key2", "value2", 2));
+        final String source = "multiplePartitionOffsetTest";
+        Message msg1 = new Message(source, "test", "key0", "value0");
+        Message msg2 = new Message(source, "test", "key1", "value1");
+        Message msg3 = new Message(source, "test", "key2", "value2");
+        producer.send(new ProducerRecord(msg1, 0));
+        producer.send(new ProducerRecord(msg2,1));
+        producer.send(new ProducerRecord(msg3, 2));
         assertEquals(broker.getNumPartitions("test"), 3);
         List<Message> messages = new ArrayList<>(broker.getAllMessagesInTopic("test"));
         assertEquals(messages.size(), 3);
@@ -159,18 +170,23 @@ public class MemoryBrokerBasedTest {
     }
 
     @Test
-    public void test(){
+    public void singlePartitionTest() {
         Producer producer = new Producer();
         Broker broker = new MemoryBroker();
         producer.connect(broker);
         Consumer consumer = new ConsumerImpl();
         consumer.connect(broker);
+        final String source = "singlePartitionTest";
         consumer.subscribe("test");
 
         // test out more than one message in a partition
-        producer.send(new ProducerRecord("test", "key0", "value0", 0));
-        producer.send(new ProducerRecord("test", "key1", "value1", 0));
-        producer.send(new ProducerRecord("test", "key2", "value2", 0));
+        Message msg1 = new Message(source, "test", "key0", "value0");
+        Message msg2 = new Message(source, "test", "key1", "value1");
+        Message msg3 = new Message(source, "test", "key2", "value2");
+
+        producer.send(new ProducerRecord(msg1, 0));
+        producer.send(new ProducerRecord(msg2, 0));
+        producer.send(new ProducerRecord(msg3, 0));
 
         List<Message> messages = new ArrayList<>(broker.getAllMessagesInTopic("test"));
         assertEquals(messages.size(), 3);
@@ -179,7 +195,7 @@ public class MemoryBrokerBasedTest {
         List<ConsumerRecord> consumerRecords = new ArrayList<>(consumer.poll());
         assertEquals(consumerRecords.size(), 3);
 
-        consumer.commitOffsetFor( "test", 0, 1);
+        consumer.commitOffsetFor("test", 0, 1);
         messages.clear();
         messages.addAll(broker.getAllMessagesInTopic("test"));
 
