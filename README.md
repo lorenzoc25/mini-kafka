@@ -21,24 +21,34 @@ This is only meant for educational and practice purposes and is not intended to 
 ## Usage
 
 ```java
+import main.data.Message;
 import main.producer.Producer;
 
 class Example {
+    
+    // right now, only broker implemented is the in-memory broker
+    private Broker broker = new MemoryBroker();
+    
     public static void producerExample() {
         Producer producer = new Producer();
-        // right now, only broker implemented is the in-memory broker
-        Broker broker = new MemoryBroker();
-        producer.connect(broker);
+        producer.connect(this.broker);
+
+        /**
+         * We can create a message with topic and KV pair, which
+         * is built on top of CloudEvent, so we can also construct
+         * a Message by passing in (topic, CloudEvent) as well.
+         */
+        Message msg = new Message("test", "key1", "value1");
+        
         // send a test message to the topic "test"
-        producer.send(new ProducerRecord("test", "key1", "value1"));
-        // send a test message to the topic "test" with a specified partition
-        roducer.send(new ProducerRecord("test", "key1", "value1", 0));
+        producer.send(new ProducerRecord(msg));
+        // send a test message with a specified partition
+        producer.send(new ProducerRecord(msg, 0));
     }
-    
+
     public static void consumerExample() {
         Consumer consumer = new Consumer();
-        Broker broker = new MemoryBroker();
-        consumer.connect(broker);
+        consumer.connect(this.broker);
         // subscribe to the topic "test"
         consumer.subscribe("test");
         // poll for messages
@@ -48,7 +58,7 @@ class Example {
             System.out.println(record);
         }
         // already consumed the first message, so commit the offset
-        consumer.commitOffsetFor("test",0);
+        consumer.commitOffsetFor("test", 0);
     }
 }
 ```
