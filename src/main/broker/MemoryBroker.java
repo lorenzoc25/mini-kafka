@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 public class MemoryBroker implements Broker {
     /**
@@ -95,13 +97,20 @@ public class MemoryBroker implements Broker {
             }
             this.records.get(topic).get(partitionId).addMessage(message);
         } else {
-            Integer generatedPartitionId = generatePartitionIdFor(topic, message.getKey());
-            this.records.get(topic).get(generatedPartitionId).addMessage(message);
+            ExecutorService executorService = java.util.concurrent.Executors.newSingleThreadExecutor();
+            Future<Integer> future = executorService.submit(() -> generatePartitionIdFor(topic, message.getKey()));
+            Integer newPartitionId = null;
+            try {
+                newPartitionId = future.get();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            executorService.shutdown();
+            this.records.get(topic).get(newPartitionId).addMessage(message);
         }
     }
 
     private Integer generatePartitionIdFor(String topic, String key) {
-        // TODO: this should be in run in a background thread
         Integer numPartition = getPartitionsSize(topic);
         if (numPartition == 0) {
             return createPartition(topic);
